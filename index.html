@@ -1,0 +1,6 @@
+<textarea autofocus></textarea>
+<script>
+  document.querySelector('textarea').addEventListener('keydown', e => {
+    fetch(`/stroke?key=${e.key}`)
+  })
+</script>
