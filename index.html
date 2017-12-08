@@ -1,6 +1,34 @@
 <textarea autofocus></textarea>
 <script>
   document.querySelector('textarea').addEventListener('keydown', e => {
-    fetch(`/stroke?key=${e.key}`)
+    switch (e.key) {
+      case 'Alt':
+      case 'Control':
+      case 'Meta':
+      case 'Shift':
+        return;
+      default:
+        let using = [
+          e.altKey   && 'alt',
+          e.ctrlKey  && 'control',
+          e.metaKey  && 'command',
+          e.shiftKey && 'shift',
+        ].filter(k => k).join(',')
+
+        fetch(`/stroke?key=${e.key}&using=${using}`)
+    }
   })
 </script>
+<style>
+  body {
+    padding: 0;
+    margin: 0;
+  }
+
+  textarea {
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+    font: large -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+  }
+</style>
