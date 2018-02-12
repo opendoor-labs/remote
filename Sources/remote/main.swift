@@ -1,10 +1,89 @@
 import Vapor
 import Foundation
 
+let index: String = """
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+          rel="stylesheet" />
+    <style>
+      body {
+        padding: 0;
+        margin: 0;
+      }
+
+      textarea {
+        width: 100vw;
+        height: 10vh;
+        margin: 0;
+        box-sizing: border-box;
+        font: large -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+      }
+
+      button.material-icons {
+        margin: 0;
+        width: 50vw;
+        height: 90vh;
+        font-size: 10vw;
+        background: none;
+        border: none;
+        touch-action: manipulation;
+      }
+    </style>
+  </head>
+  <body>
+    <textarea autofocus placeholder="Type here"></textarea>
+    <button class="material-icons" value="ArrowLeft">
+      keyboard_arrow_left
+    </button><!--
+ --><button class="material-icons" value="ArrowRight">
+      keyboard_arrow_right
+    </button>
+    <script>
+      const ws = new WebSocket(`ws://${location.host}/stroke`)
+      ws.onerror = (e) => {
+        console.log('error', e)
+      }
+      ws.onmessage = (e) => {
+        console.log('message', e)
+      }
+      console.log(ws)
+
+      document.querySelector('textarea').addEventListener('keydown', e => {
+        switch (e.key) {
+          case 'Alt':
+          case 'Control':
+          case 'Meta':
+          case 'Shift':
+            return;
+          default:
+            let using = [
+              e.altKey   && 'alt',
+              e.ctrlKey  && 'control',
+              e.metaKey  && 'command',
+              e.shiftKey && 'shift',
+            ].filter(k => k).join(',')
+
+            ws.send(JSON.stringify({ key: e.key, using }))
+        }
+      })
+
+      document.body.addEventListener('click', e => {
+        if (e.target.nodeName === 'BUTTON')
+          ws.send(JSON.stringify({ key: e.target.value }))
+      })
+    </script>
+  </body>
+</html>
+"""
+
 let drop = try Droplet()
 
 drop.get("/") { req in
-    return try drop.view.make("index.html")
+    return try View(bytes: index)
 }
 
 drop.socket("stroke") { req, ws in
