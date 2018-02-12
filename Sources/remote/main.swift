@@ -50,7 +50,6 @@ let index: String = """
       ws.onmessage = (e) => {
         console.log('message', e)
       }
-      console.log(ws)
 
       document.querySelector('textarea').addEventListener('keydown', e => {
         switch (e.key) {
@@ -99,17 +98,19 @@ drop.socket("stroke") { req, ws in
 
     ws.onText = { ws, text in
         let json = try JSON(bytes: text.makeBytes())
-        let key: CGKeyCode = {
+        let key: CGKeyCode? = {
           switch json.object?["key"]?.string ?? "" {
             case "ArrowRight": return 0x7c
             case "ArrowLeft":  return 0x7b
-            default: return 0
+            default: return nil
           }
         }()
-        let eventDown = CGEvent(keyboardEventSource: eventSource, virtualKey: key, keyDown: true)
-        let eventUp = CGEvent(keyboardEventSource: eventSource, virtualKey: key, keyDown: false)
-        eventDown?.post(tap: location)
-        eventUp?.post(tap: location)
+        if let keyCode = key {
+            let eventDown = CGEvent(keyboardEventSource: eventSource, virtualKey: keyCode, keyDown: true)
+            let eventUp = CGEvent(keyboardEventSource: eventSource, virtualKey: keyCode, keyDown: false)
+            eventDown?.post(tap: location)
+            eventUp?.post(tap: location)
+        }
     }
 
     ws.onClose = { ws, _, _, _ in
