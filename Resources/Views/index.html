@@ -38,6 +38,15 @@
       keyboard_arrow_right
     </button>
     <script>
+      const ws = new WebSocket(`ws://${location.host}/stroke`)
+      ws.onerror = (e) => {
+        console.log('error', e)
+      }
+      ws.onmessage = (e) => {
+        console.log('message', e)
+      }
+      console.log(ws)
+
       document.querySelector('textarea').addEventListener('keydown', e => {
         switch (e.key) {
           case 'Alt':
@@ -53,13 +62,15 @@
               e.shiftKey && 'shift',
             ].filter(k => k).join(',')
 
-            fetch(`/stroke?key=${e.key}&using=${using}`)
+            //fetch(`/stroke?key=${e.key}&using=${using}`)
+            ws.send(JSON.stringify({ key: e.key, using }))
         }
       })
 
       document.body.addEventListener('click', e => {
         if (e.target.nodeName === 'BUTTON')
-          fetch(`/stroke?key=${e.target.value}`)
+          ws.send(JSON.stringify({ key: e.target.value }))
+          //fetch(`/stroke?key=${e.target.value}`)
       })
     </script>
   </body>
