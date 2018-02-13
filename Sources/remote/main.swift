@@ -1,122 +1,113 @@
-import Vapor
 import Foundation
+import Vapor
 
-let index: String = """
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
-          rel="stylesheet" />
-    <style>
-      body {
-        padding: 0;
-        margin: 0;
-      }
+let eventSource = CGEventSource(stateID: CGEventSourceStateID.hidSystemState)
+func makeCGEvent(_ json: JSON?) -> CGEvent? {
+  let key = json?.object?["key"]?.string
+  let down = json?.object?["down"]?.bool
 
-      textarea {
-        width: 100vw;
-        height: 10vh;
-        margin: 0;
-        box-sizing: border-box;
-        font: large -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
-      }
+  // from /System/Library/Frameworks/Carbon.framework/Versions/A/Frameworks/HIToolbox.framework/Versions/A/Headers/Events.h
+  let keyCode: CGKeyCode? = {
+    switch key! {
+    case "Enter":      return 0x24
+    case " ":          return 0x31
+    case "Escape":     return 0x35
+    case "Meta":       return 0x37
+    case "Shift":      return 0x38
+    case "Alt":        return 0x3A
+    case "ArrowLeft":  return 0x7B
+    case "ArrowRight": return 0x7C
+    case "ArrowDown":  return 0x7D
+    case "ArrowUp":    return 0x7E
+    default: return nil
+    }
+  }()
 
-      button.material-icons {
-        margin: 0;
-        width: 50vw;
-        height: 90vh;
-        font-size: 10vw;
-        background: none;
-        border: none;
-        touch-action: manipulation;
-      }
-    </style>
-  </head>
-  <body>
-    <textarea autofocus placeholder="Type here"></textarea>
-    <button class="material-icons" value="ArrowLeft">
-      keyboard_arrow_left
-    </button><!--
- --><button class="material-icons" value="ArrowRight">
-      keyboard_arrow_right
-    </button>
-    <script>
-      const ws = new WebSocket(`ws://${location.host}/stroke`)
-      ws.onerror = (e) => {
-        console.log('error', e)
-      }
-      ws.onmessage = (e) => {
-        console.log('message', e)
-      }
-
-      document.querySelector('textarea').addEventListener('keydown', e => {
-        switch (e.key) {
-          case 'Alt':
-          case 'Control':
-          case 'Meta':
-          case 'Shift':
-            return;
-          default:
-            let using = [
-              e.altKey   && 'alt',
-              e.ctrlKey  && 'control',
-              e.metaKey  && 'command',
-              e.shiftKey && 'shift',
-            ].filter(k => k).join(',')
-
-            ws.send(JSON.stringify({ key: e.key, using }))
-        }
-      })
-
-      document.body.addEventListener('click', e => {
-        if (e.target.nodeName === 'BUTTON')
-          ws.send(JSON.stringify({ key: e.target.value }))
-      })
-    </script>
-  </body>
-</html>
-"""
+  guard keyCode != nil && down != nil else { return nil }
+  return CGEvent(keyboardEventSource: eventSource, virtualKey: keyCode!, keyDown: down!)
+}
 
 let drop = try Droplet()
 
-drop.get("/") { req in
-    return try View(bytes: index)
+drop.socket("stroke") { req, ws in
+  let pingTimer: DispatchSourceTimer = DispatchSource.makeTimerSource()
+  pingTimer.schedule(deadline: .now(), repeating: .seconds(25))
+  pingTimer.setEventHandler { try? ws.ping() }
+  pingTimer.resume()
+
+  ws.onClose = { ws, _, _, _ in
+    pingTimer.cancel()
+  }
+
+  ws.onText = { ws, text in
+    if let event = makeCGEvent(try JSON(bytes: text)) {
+      event.post(tap: CGEventTapLocation.cghidEventTap)
+    }
+  }
 }
 
-drop.socket("stroke") { req, ws in
-    var pingTimer: DispatchSourceTimer? = nil
-
-    pingTimer = DispatchSource.makeTimerSource()
-    pingTimer?.schedule(deadline: .now(), repeating: .seconds(25))
-    pingTimer?.setEventHandler { try? ws.ping() }
-    pingTimer?.resume()
-
-    let eventSource = CGEventSource(stateID: CGEventSourceStateID.hidSystemState)
-    let location = CGEventTapLocation.cghidEventTap
-
-    ws.onText = { ws, text in
-        let json = try JSON(bytes: text.makeBytes())
-        let key: CGKeyCode? = {
-          switch json.object?["key"]?.string ?? "" {
-            case "ArrowRight": return 0x7c
-            case "ArrowLeft":  return 0x7b
-            default: return nil
+drop.get("/") { req in
+  return try View(bytes: """
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width">
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+              rel="stylesheet" />
+        <style>
+          body {
+            padding: 0;
+            margin: 0;
           }
-        }()
-        if let keyCode = key {
-            let eventDown = CGEvent(keyboardEventSource: eventSource, virtualKey: keyCode, keyDown: true)
-            let eventUp = CGEvent(keyboardEventSource: eventSource, virtualKey: keyCode, keyDown: false)
-            eventDown?.post(tap: location)
-            eventUp?.post(tap: location)
-        }
-    }
 
-    ws.onClose = { ws, _, _, _ in
-        pingTimer?.cancel()
-        pingTimer = nil
-    }
+          textarea {
+            width: 100vw;
+            height: 10vh;
+            margin: 0;
+            box-sizing: border-box;
+            font: large -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+          }
+
+          button.material-icons {
+            margin: 0;
+            width: 50vw;
+            height: 90vh;
+            font-size: 10vw;
+            background: none;
+            border: none;
+            user-select: none;
+            touch-action: manipulation;
+          }
+        </style>
+      </head>
+      <body>
+        <textarea autofocus placeholder="Focus to use a physical keyboard"></textarea>
+        <button class="material-icons" value="ArrowLeft">
+          keyboard_arrow_left
+        </button><!--
+    --><button class="material-icons" value="ArrowRight">
+          keyboard_arrow_right
+        </button>
+        <script>
+          const ws = new WebSocket(`ws://${location.host}/stroke`)
+          ws.onerror = (e) => {
+            console.log('error', e)
+          }
+
+          for (const direction of ['down', 'up']) {
+            document.querySelector('textarea').addEventListener(`key${direction}`, e => {
+              ws.send(JSON.stringify({ key: e.key, down: direction === 'down' }))
+            })
+            document.body.addEventListener(`mouse${direction}`, e => {
+              if (e.target.nodeName === 'BUTTON')
+                ws.send(JSON.stringify({ key: e.target.value, down: direction === 'down' }))
+            })
+          }
+        </script>
+      </body>
+    </html>
+    """)
 }
 
 try drop.run()
