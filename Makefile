@@ -19,5 +19,3 @@ Library/%.a: $(L_DIR)/%.a | Library
 
 Library:
 	mkdir Library
-
-.PHONY: clean
