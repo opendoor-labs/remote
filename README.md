@@ -14,18 +14,7 @@ machine presenting the slides. It will then relay keyboard events to the local m
 
 Building
 --------
-Link against openssl:
-```
-swift build -Xswiftc -I/usr/local/opt/openssl/include -Xswiftc -static-stdlib -Xlinker -L/usr/local/opt/openssl/lib
-```
-
-But if we want to run this on a machine without brew's openssl, we need to mess with the output binary:
-```
-install_name_tool -change /usr/local/opt/openssl/lib/libcrypto.1.0.0.dylib /usr/lib/libcrypto.dylib .build/debug/remote
-install_name_tool -change /usr/local/opt/openssl/lib/libssl.1.0.0.dylib /usr/lib/libssl.dylib .build/debug/remote
-```
-
-Another option is to not give the linker the option of finding the openssl shared libraries:
+We want to statically link OpenSSL. So, first `brew install openssl`. Then, hide the shared OpenSSL libraries from the linker:
 ```
 mkdir Library
 ln -s /usr/local/opt/openssl/lib/libssl.a Library
