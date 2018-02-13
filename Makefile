@@ -1,11 +1,9 @@
-all: debug
+debug: .build/debug/remote
+release: .build/release/remote
 
 clean:
 	swift package clean
 	rm -rf Library
-
-debug: .build/debug/remote
-release: .build/release/remote
 
 .build/debug/remote:
 	swift build -Xswiftc -I/usr/local/opt/openssl/include -Xlinker -L/usr/local/opt/openssl/lib
