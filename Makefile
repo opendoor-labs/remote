@@ -1,3 +1,6 @@
+I_DIR=/usr/local/opt/openssl/include
+L_DIR=/usr/local/opt/openssl/lib
+
 debug: .build/debug/remote
 release: .build/release/remote
 
@@ -6,16 +9,13 @@ clean:
 	rm -rf Library
 
 .build/debug/remote:
-	swift build -Xswiftc -I/usr/local/opt/openssl/include -Xlinker -L/usr/local/opt/openssl/lib
+	swift build -Xswiftc -I$(I_DIR) -Xlinker -L$(L_DIR)
 
 .build/release/remote: Library/libssl.a Library/libcrypto.a
-	swift build -c release -Xswiftc -I/usr/local/opt/openssl/include -Xswiftc -static-stdlib -Xlinker -LLibrary
+	swift build -c release -Xswiftc -I$(I_DIR) -Xswiftc -static-stdlib -Xlinker -LLibrary
 
-Library/libssl.a: Library
-	ln -s /usr/local/opt/openssl/lib/libssl.a Library/libssl.a
-
-Library/libcrypto.a: Library
-	ln -s /usr/local/opt/openssl/lib/libcrypto.a Library/libcrypto.a
+Library/%.a: $(L_DIR)/%.a | Library
+	ln -s $< Library/
 
 Library:
 	mkdir Library
