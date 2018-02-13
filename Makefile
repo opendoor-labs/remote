@@ -8,10 +8,10 @@ clean:
 	swift package clean
 	rm -rf Library
 
-.build/debug/remote:
+.build/debug/remote: Sources/remote/main.swift
 	swift build -Xswiftc -I$(I_DIR) -Xlinker -L$(L_DIR)
 
-.build/release/remote: Library/libssl.a Library/libcrypto.a
+.build/release/remote: Library/libssl.a Library/libcrypto.a Sources/remote/main.swift
 	swift build -c release -Xswiftc -I$(I_DIR) -Xswiftc -static-stdlib -Xlinker -LLibrary
 
 Library/%.a: $(L_DIR)/%.a | Library
@@ -19,3 +19,5 @@ Library/%.a: $(L_DIR)/%.a | Library
 
 Library:
 	mkdir Library
+
+.PHONY: clean
