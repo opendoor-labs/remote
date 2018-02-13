@@ -25,4 +25,10 @@ install_name_tool -change /usr/local/opt/openssl/lib/libcrypto.1.0.0.dylib /usr/
 install_name_tool -change /usr/local/opt/openssl/lib/libssl.1.0.0.dylib /usr/lib/libssl.dylib .build/debug/remote
 ```
 
-Another option is to `rm -rf /usr/local/opt/openssl/lib/*.dylib` before `swift build`. Then the linker will only find the static libraries available and compile those into a fatter binary.
+Another option is to not give the linker the option of finding the openssl shared libraries:
+```
+mkdir Library
+ln -s /usr/local/opt/openssl/lib/libssl.a Library
+ln -s /usr/local/opt/openssl/lib/libcrypto.a Library
+swift build -Xswiftc -I/usr/local/opt/openssl/include -Xswiftc -static-stdlib -Xlinker -LLibrary
+```
